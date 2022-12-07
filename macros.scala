@@ -1,6 +1,7 @@
 package macrotypeclass
 
-import scala.quoted.{ Expr, FromExpr, quotes, Quotes, Type }
+import scala.annotation.targetName
+import scala.quoted.{Expr, FromExpr, Quotes, Type, quotes}
 
 object MacroTypeclass:
 
@@ -13,25 +14,14 @@ object MacroTypeclass:
     catch
       case _: Throwable => None
 
-//  def testImpl[M: Type](expr: Expr[M])(using Quotes): Expr[String] = {
-//    import quotes.reflect.*
-//    val name: String = TypeRepr.of[M].typeSymbol.companionModule.fullName
-//    val fixedName = name.replace(raw"$$.", raw"$$") + "$"
-//    try {
-//      val gimi = Class.forName(fixedName).getField("MODULE$").get(null).asInstanceOf[M]
-//      Expr(gimi.toString)
-//    } catch {
-//      case _: Throwable => Expr(s"we failed for $fixedName")
-//    }
-//  }
-//
-//  inline def test[M <: Singleton](inline m: M): String = ${ testImpl('{ m }) }
-
 trait FastSemigroup[A]:
   def combine(a1: Expr[A], a2: Expr[A])(using Quotes): Expr[A]
 
 object FastSemigroup:
   inline def combine[A, MT <: FastSemigroup[A] & Singleton](inline a1: A, inline a2: A, inline MT: MT): A =
+    ${ combineImpl[A, MT]('{ a1 }, '{ a2 }) }
+  @targetName("combineImplicit")
+  inline def combine[A, MT <: FastSemigroup[A] & Singleton](inline a1: A, inline a2: A)(using inline MT: MT): A =
     ${ combineImpl[A, MT]('{ a1 }, '{ a2 }) }
 
   def combineImpl[A, MT <: FastSemigroup[A] & Singleton: Type](a1: Expr[A], a2: Expr[A])(using Quotes): Expr[A] =
